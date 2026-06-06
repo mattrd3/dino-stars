@@ -1,4 +1,4 @@
-const APP_VERSION = "v1.1.0";
+const APP_VERSION = "v1.2.0";
 const THEMES = {
   dino_jungle: {
     eggIcon: "egg",
@@ -51,6 +51,7 @@ function bindControls() {
   $("refreshBtn").addEventListener("click", loadState);
   $("unlockBtn").addEventListener("click", unlockAdmin);
   $("saveSettingsBtn").addEventListener("click", saveSettings);
+  $("saveRewardBtn").addEventListener("click", saveWeeklyReward);
   $("addPersonBtn").addEventListener("click", addPersonPrompt);
   $("addTaskBtn").addEventListener("click", addTaskPrompt);
   $("undoSelectedBtn").addEventListener("click", undoSelectedTask);
@@ -59,6 +60,8 @@ function bindControls() {
   $("installBtn").addEventListener("click", installApp);
   const plannerPerson = $("plannerPerson");
   if (plannerPerson) plannerPerson.addEventListener("change", renderWeeklyPlanner);
+  const rewardPerson = $("rewardPerson");
+  if (rewardPerson) rewardPerson.addEventListener("change", renderRewardSettings);
   const plannerRefreshBtn = $("plannerRefreshBtn");
   if (plannerRefreshBtn) plannerRefreshBtn.addEventListener("click", renderWeeklyPlanner);
 }
@@ -197,6 +200,8 @@ function renderAdmin() {
   $("settingRewardText").value = state.settings.current_reward_text || "Reward chest surprise";
   renderPeopleEditor();
   renderTaskEditor();
+  renderRewardPersonOptions();
+  renderRewardSettings();
   renderPlannerPersonOptions();
   renderWeeklyPlanner();
   if (adminPin) {
@@ -235,6 +240,44 @@ function renderTaskEditor() {
     box.appendChild(row);
   }
   box.querySelectorAll("[data-save-task]").forEach(btn => btn.addEventListener("click", () => saveTask(btn.dataset.saveTask)));
+}
+
+function renderRewardPersonOptions() {
+  const select = $("rewardPerson");
+  if (!select) return;
+  const current = select.value || selectedPersonId || "george";
+  select.innerHTML = "";
+  for (const person of state.people) {
+    const option = document.createElement("option");
+    option.value = person.id;
+    option.textContent = `${person.avatar_emoji} ${person.name}`;
+    select.appendChild(option);
+  }
+  select.value = state.people.find(p => p.id === current) ? current : (state.people.find(p => p.counts_towards_reward)?.id || state.people[0]?.id || "george");
+}
+
+function renderRewardSettings() {
+  const select = $("rewardPerson");
+  if (!select || !state) return;
+  const personId = select.value || "george";
+  const progress = state.rewardProgress?.[personId];
+  $("rewardTextInput").value = progress?.rewardText || state.settings.current_reward_text || "Reward chest surprise";
+  $("rewardTargetInput").value = progress?.targetStars ?? state.settings.default_weekly_target ?? 15;
+}
+
+async function saveWeeklyReward() {
+  try {
+    const personId = $("rewardPerson").value || selectedPersonId || "george";
+    state = await post("/api/admin/reward", {
+      pin: adminPin,
+      personId,
+      weekStartDate: state.weekStartDate,
+      rewardText: $("rewardTextInput").value,
+      targetStars: $("rewardTargetInput").value
+    });
+    render();
+    showCelebration("Weekly reward saved", "🎁🦖");
+  } catch (err) { alert(err.message); }
 }
 
 function renderPlannerPersonOptions() {

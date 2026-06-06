@@ -88,6 +88,10 @@
           </div>
 
           <div id="adminPanel" class="hidden admin-panel">
+            <div class="admin-version-bar">
+              <span>App version</span>
+              <strong id="versionLabel">v1.2.0</strong>
+            </div>
             <details open>
               <summary>App settings</summary>
               <label>App name <input id="settingAppName"></label>
@@ -101,6 +105,21 @@
               <label>Reward text <input id="settingRewardText"></label>
               <label>New parent PIN <input id="settingNewPin" type="password" inputmode="numeric" placeholder="Leave blank to keep current"></label>
               <button id="saveSettingsBtn" class="primary-btn">Save settings</button>
+            </details>
+
+            <details open>
+              <summary>Weekly reward</summary>
+              <p class="muted">Set who the weekly reward applies to, what the reward is, and how many stars are needed this week.</p>
+              <label>Reward person
+                <select id="rewardPerson"></select>
+              </label>
+              <label>Weekly reward
+                <input id="rewardTextInput" placeholder="e.g. Soft play, movie night, £2 pocket money">
+              </label>
+              <label>Stars needed this week
+                <input id="rewardTargetInput" type="number" min="0" max="99">
+              </label>
+              <button id="saveRewardBtn" class="primary-btn">Save weekly reward</button>
             </details>
 
             <details>
@@ -146,8 +165,6 @@
               <button id="loadLogsBtn" class="secondary-btn">Load latest logs</button>
               <div id="logList" class="log-list"></div>
             </details>
-
-            <p class="version" id="versionLabel">v1.1.0</p>
           </div>
         </div>
       </section>

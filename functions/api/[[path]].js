@@ -1,4 +1,4 @@
-const VERSION = "v1.1.0";
+const VERSION = "v1.2.0";
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export async function onRequest(context) {
@@ -16,6 +16,7 @@ export async function onRequest(context) {
     if (request.method === "POST" && path === "undo-task") return undoTask(request, env);
     if (request.method === "POST" && path === "admin/check-pin") return checkPinRoute(request, env);
     if (request.method === "POST" && path === "admin/settings") return saveSettings(request, env);
+    if (request.method === "POST" && path === "admin/reward") return saveReward(request, env);
     if (request.method === "POST" && path === "admin/person") return savePerson(request, env);
     if (request.method === "POST" && path === "admin/task") return saveTask(request, env);
     if (request.method === "POST" && path === "admin/assignment") return saveAssignment(request, env);
@@ -261,6 +262,40 @@ async function saveSettings(request, env) {
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`).bind(VERSION).run();
 
   await log(env, { action_type: "settings_updated", actor_name: "Parent", source: "admin", details: "Settings updated." });
+  return json({ ok: true, ...(await buildState(env)) });
+}
+
+async function saveReward(request, env) {
+  const body = await readJson(request);
+  if (!(await verifyPin(env, body.pin))) return json({ ok: false, error: "Incorrect parent PIN." }, 401);
+
+  const personId = cleanId(body.personId);
+  const weekStartDate = body.weekStartDate && isDate(body.weekStartDate) ? body.weekStartDate : getWeekStart(getUKDate());
+  const rewardText = String(body.rewardText || "Reward chest surprise").trim() || "Reward chest surprise";
+  const targetStars = Math.max(0, Math.min(99, Number(body.targetStars || 0)));
+
+  if (!personId) return json({ ok: false, error: "personId is required." }, 400);
+
+  const person = await env.DB.prepare(`SELECT id FROM people WHERE id = ? AND active = 1`).bind(personId).first();
+  if (!person) return json({ ok: false, error: "Person not found." }, 404);
+
+  await env.DB.prepare(
+    `INSERT INTO weekly_rewards (id, person_id, week_start_date, reward_text, target_stars, updated_at)
+     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(person_id, week_start_date)
+     DO UPDATE SET reward_text = excluded.reward_text, target_stars = excluded.target_stars, updated_at = CURRENT_TIMESTAMP`
+  ).bind(`${personId}_${weekStartDate}`, personId, weekStartDate, rewardText, targetStars).run();
+
+  await log(env, {
+    action_type: "reward_saved",
+    actor_name: "Parent",
+    person_id: personId,
+    task_date: weekStartDate,
+    source: "admin",
+    new_value: `${targetStars}|${rewardText}`,
+    details: "Weekly reward saved."
+  });
+
   return json({ ok: true, ...(await buildState(env)) });
 }
 
