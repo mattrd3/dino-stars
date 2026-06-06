@@ -1,4 +1,4 @@
-const VERSION = "v1.2.0";
+const VERSION = "v1.3.0";
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export async function onRequest(context) {

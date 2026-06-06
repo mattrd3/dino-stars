@@ -1,4 +1,4 @@
--- Dino Stars v1.2 initial schema
+-- Dino Stars v1.3 initial schema
 -- Cloudflare D1 / SQLite
 
 PRAGMA foreign_keys = ON;
@@ -122,7 +122,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
   ('default_weekly_target', '15'),
   ('current_reward_text', 'Reward chest surprise'),
   ('admin_pin_hash', 'a1fb4e703a9ef1fa4936801721ff285a97ac85330856674412e054892afe6972'),
-  ('version', 'v1.2.0');
+  ('version', 'v1.3.0');
 
 INSERT OR IGNORE INTO people (id, name, role, avatar_emoji, theme_colour, counts_towards_reward, daily_task_count, active, sort_order) VALUES
   ('george', 'George', 'child', '🦖', '#66bb6a', 1, 3, 1, 1),

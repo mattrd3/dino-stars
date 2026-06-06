@@ -1,45 +1,38 @@
-# Dino Stars v1.2.0
+# Dino Stars v1.3.0
 
 Dino Stars is a PWA-first family reward chart for jobs and good things, built with Cloudflare Pages, Pages Functions and D1.
 
-## v1.2 changes
+## v1.3 changes
 
 This release includes:
 
-1. Weekly reward controls in Parent Setup:
-   - choose reward person
-   - set reward text
-   - set stars needed for this week
-2. More egg-like dinosaur egg visuals:
-   - taller egg shape
-   - green shell
-   - white spots
-   - small visual variants
-3. App version moved to the top of the admin menu only.
-4. API version bumped to v1.2.0.
-5. New migration: `0003_v1_2_reward_admin_and_egg_polish.sql`.
+1. Reward chest reveal behaviour:
+   - Parent/admin pre-selects the weekly reward.
+   - George sees a locked/mystery reward while still collecting stars.
+   - When the weekly target is reached, the chest opens and the selected reward is revealed.
+2. Simplified green eggs:
+   - Reverts away from the spotted eggs.
+   - Uses a cleaner green egg style that is closer to the original, but green.
+3. Version bumped to v1.3.0.
+4. New migration: `0004_v1_3_reward_reveal_and_green_eggs.sql`.
 
-## Previous v1.1 changes retained
+## Reward setup
 
-- Clean task library:
-  - Eat all dinner — 🍽️
-  - Brush teeth — 🪥
-  - Be polite — 🙂
-  - Make your bed — 🛏️
-  - Get dressed — 👕
-  - Eat lunch at school — 🥪
-  - Read a book — 📚
-  - Learn your words — 🔤
-  - Tidy up — 🧸
-- Weekly Planner
-- Exact day-by-day task selection
-- `scheduled_tasks` table
+In Parent Setup:
+
+1. Open Weekly Reward.
+2. Choose the reward person, for example George.
+3. Enter the reward text, for example `Soft play`.
+4. Enter the stars needed for the week, for example `15`.
+5. Save weekly reward.
+
+George will not see the reward text until the reward chest is unlocked.
 
 ## Deployment
 
 Copy the files into your existing `dino-stars` repo.
 
-Be careful with `wrangler.toml` and do not overwrite your real D1 database ID unless the file is correct.
+Important: do not overwrite your real `wrangler.toml` database ID. This package includes a `wrangler.toml` only for completeness, but you should normally keep your existing working one.
 
 Apply migrations:
 
@@ -47,10 +40,10 @@ Apply migrations:
 npx wrangler d1 migrations apply dino-stars-db --remote
 ```
 
-For an existing v1.1 database this should apply:
+For an existing v1.2 database this should apply:
 
 ```text
-0003_v1_2_reward_admin_and_egg_polish.sql
+0004_v1_3_reward_reveal_and_green_eggs.sql
 ```
 
 Then commit and push to GitHub.
@@ -67,7 +60,7 @@ Expected:
 {
   "ok": true,
   "app": "Dino Stars",
-  "version": "v1.2.0",
+  "version": "v1.3.0",
   "db": "connected"
 }
 ```
@@ -79,3 +72,5 @@ PowerShell:
 ```powershell
 $env:DINO_STARS_URL="https://dino-stars.pages.dev"; node test/api-smoke-test.js
 ```
+
+Because this is a PWA, hard refresh after deployment and close/reopen the installed app on mobile.

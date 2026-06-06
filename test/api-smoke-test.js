@@ -11,7 +11,7 @@ async function main() {
   const health = await get("/api/health");
   assert(health.ok, "health ok");
   assert(health.app, "health includes app name");
-  assert(health.version === "v1.2.0", "health shows v1.2.0");
+  assert(health.version === "v1.3.0", "health shows v1.3.0");
 
   const state = await get("/api/state");
   assert(state.ok, "state ok");

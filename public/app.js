@@ -1,4 +1,4 @@
-const APP_VERSION = "v1.2.0";
+const APP_VERSION = "v1.3.0";
 const THEMES = {
   dino_jungle: {
     eggIcon: "egg",
@@ -166,16 +166,23 @@ function renderWeek() {
 function renderReward() {
   const person = getSelectedPerson();
   const progress = state.rewardProgress[person.id];
-  $("rewardTitle").textContent = progress.rewardText || state.settings.current_reward_text || "Reward chest surprise";
+  const rewardText = progress.rewardText || state.settings.current_reward_text || "Reward chest surprise";
   const pct = Math.min(100, progress.targetStars ? (progress.completedStars / progress.targetStars) * 100 : 0);
   $("rewardMeter").style.width = `${pct}%`;
+
+  const chest = document.querySelector(".chest");
+  if (chest) chest.textContent = progress.unlocked && person.counts_towards_reward ? "🎁✨" : "🎁";
+
   if (!person.counts_towards_reward) {
-    $("rewardText").textContent = `${person.name} joins in, but does not count towards George’s score.`;
+    $("rewardTitle").textContent = "Family helper stars";
+    $("rewardText").textContent = `${person.name} joins in, but does not count towards George’s reward chest.`;
   } else if (progress.unlocked) {
-    $("rewardText").textContent = `${progress.completedStars} / ${progress.targetStars} Dino Stars — reward unlocked!`;
+    $("rewardTitle").textContent = rewardText;
+    $("rewardText").textContent = `${progress.completedStars} / ${progress.targetStars} Dino Stars — chest opened and reward revealed!`;
   } else {
     const left = Math.max(0, progress.targetStars - progress.completedStars);
-    $("rewardText").textContent = `${progress.completedStars} / ${progress.targetStars} Dino Stars. Collect ${left} more to open the chest.`;
+    $("rewardTitle").textContent = "Mystery reward waiting...";
+    $("rewardText").textContent = `${progress.completedStars} / ${progress.targetStars} Dino Stars. Collect ${left} more to open the chest and reveal the reward.`;
   }
 }
 

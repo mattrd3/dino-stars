@@ -135,54 +135,24 @@ h2 { margin-bottom: 8px; font-size: clamp(1.45rem, 5vw, 2rem); }
 
 .dino-egg {
   position: relative;
-  width: 50px;
-  height: 72px;
-  border-radius: 50% 50% 44% 44% / 63% 63% 37% 37%;
+  width: 52px;
+  height: 66px;
+  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
   background:
-    radial-gradient(ellipse at 31% 20%, rgba(255,255,255,.38), transparent 22%),
-    linear-gradient(150deg, #a7df67 0%, #62bb4b 50%, #2f8738 100%);
-  border: 3px solid rgba(32, 110, 45, .26);
+    radial-gradient(ellipse at 34% 22%, rgba(255,255,255,.45), transparent 20%),
+    linear-gradient(145deg, #a5df68 0%, #5dbb4b 55%, #2f8738 100%);
+  border: 3px solid rgba(32, 110, 45, .22);
   box-shadow:
-    inset -8px -10px 0 rgba(19, 96, 37, .16),
-    inset 5px 7px 0 rgba(255,255,255,.18),
-    0 12px 18px rgba(25, 88, 38, .22);
+    inset -7px -8px 0 rgba(19, 96, 37, .14),
+    inset 5px 6px 0 rgba(255,255,255,.16),
+    0 10px 15px rgba(25, 88, 38, .18);
   transform: rotate(-3deg);
 }
 
 .dino-egg span,
 .dino-egg i,
 .dino-egg b {
-  position: absolute;
-  display: block;
-  background: #fffdf2;
-  box-shadow: inset -1px -1px 0 rgba(0,0,0,.04);
-}
-
-.dino-egg span {
-  width: 14px;
-  height: 11px;
-  border-radius: 55% 45% 50% 50%;
-  top: 13px;
-  left: 16px;
-  transform: rotate(18deg);
-}
-
-.dino-egg i {
-  width: 11px;
-  height: 17px;
-  border-radius: 48% 52% 45% 55%;
-  top: 34px;
-  right: 10px;
-  transform: rotate(-22deg);
-}
-
-.dino-egg b {
-  width: 17px;
-  height: 12px;
-  border-radius: 60% 40% 52% 48%;
-  bottom: 11px;
-  left: 11px;
-  transform: rotate(-11deg);
+  display: none;
 }
 
 .egg-variant-2.dino-egg,
@@ -201,35 +171,18 @@ h2 { margin-bottom: 8px; font-size: clamp(1.45rem, 5vw, 2rem); }
   display: inline-block;
   position: relative;
   width: 21px;
-  height: 31px;
+  height: 29px;
   margin: 0 2px;
   vertical-align: middle;
-  border-radius: 50% 50% 44% 44% / 63% 63% 37% 37%;
-  background: linear-gradient(145deg, #a7df67 0%, #62bb4b 52%, #2f8738 100%);
+  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
+  background: linear-gradient(145deg, #a5df68 0%, #5dbb4b 55%, #2f8738 100%);
   border: 2px solid rgba(32, 110, 45, .18);
   box-shadow: inset -3px -4px 0 rgba(19, 96, 37, .14);
 }
 
-.mini-egg::before {
-  content: "";
-  position: absolute;
-  width: 6px;
-  height: 5px;
-  top: 6px;
-  left: 7px;
-  background: #fffdf2;
-  border-radius: 50%;
-}
-
+.mini-egg::before,
 .mini-egg::after {
-  content: "";
-  position: absolute;
-  width: 7px;
-  height: 8px;
-  right: 5px;
-  bottom: 7px;
-  background: #fffdf2;
-  border-radius: 50%;
+  display: none;
 }
 
 .mini-star { display: inline-block; margin: 0 1px; vertical-align: middle; }

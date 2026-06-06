@@ -1,4 +1,4 @@
-const APP_VERSION = "v1.2.0";
+const APP_VERSION = "v1.3.0";
 const CACHE_NAME = `dino-stars-${APP_VERSION}`;
 const STATIC_ASSETS = [
   "/",
