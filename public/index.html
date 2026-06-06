@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dino Stars</title>
+  <meta name="description" content="A colourful family reward chart for jobs and good deeds.">
+  <meta name="theme-color" content="#4caf50">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Dino Stars">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="theme-dino-jungle">
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Family reward chart</p>
+        <h1 id="appName">Dino Stars</h1>
+      </div>
+      <button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button>
+    </header>
+
+    <main>
+      <section id="loadingScreen" class="loading-card">
+        <div class="big-dino">🦖</div>
+        <h2>Loading today’s stars...</h2>
+        <p>Trying to reach the Dino jungle.</p>
+      </section>
+
+      <section id="offlineBanner" class="offline-banner hidden">
+        You’re offline. Dino Stars needs internet to save stars across devices.
+      </section>
+
+      <section id="screen-today" class="screen active" aria-labelledby="todayTitle">
+        <div class="person-strip" id="personStrip"></div>
+        <div class="card hero-card">
+          <div>
+            <p class="eyebrow" id="todayDateLabel">Today</p>
+            <h2 id="todayTitle">George’s Dino Jobs</h2>
+          </div>
+          <div class="progress-pill" id="todayProgress">0 / 3</div>
+        </div>
+        <div id="taskList" class="task-list"></div>
+      </section>
+
+      <section id="screen-week" class="screen" aria-labelledby="weekTitle">
+        <div class="card">
+          <p class="eyebrow">Monday to Sunday</p>
+          <h2 id="weekTitle">This Week</h2>
+          <p id="weekSummary" class="muted"></p>
+        </div>
+        <div id="weekGrid" class="week-grid"></div>
+      </section>
+
+      <section id="screen-reward" class="screen" aria-labelledby="rewardTitle">
+        <div class="reward-card card">
+          <div class="chest">🎁</div>
+          <p class="eyebrow">Reward Chest</p>
+          <h2 id="rewardTitle">Reward chest surprise</h2>
+          <div class="meter"><span id="rewardMeter"></span></div>
+          <p id="rewardText" class="reward-text"></p>
+        </div>
+      </section>
+
+      <section id="screen-family" class="screen" aria-labelledby="familyTitle">
+        <div class="card">
+          <p class="eyebrow">Team Dino</p>
+          <h2 id="familyTitle">Family</h2>
+          <p class="muted">Adults can join in, but they do not add to George’s score.</p>
+        </div>
+        <div id="familyList" class="family-list"></div>
+      </section>
+
+      <section id="screen-parent" class="screen" aria-labelledby="parentTitle">
+        <div class="card parent-card">
+          <p class="eyebrow">Grown-ups only</p>
+          <h2 id="parentTitle">Parent Setup</h2>
+          <div id="pinPanel">
+            <label for="pinInput">Parent PIN</label>
+            <div class="inline-form">
+              <input id="pinInput" inputmode="numeric" autocomplete="current-password" type="password" placeholder="Enter PIN">
+              <button id="unlockBtn" class="primary-btn">Unlock</button>
+            </div>
+            <p class="muted">Initial PIN is 2468. Change it after first setup.</p>
+          </div>
+
+          <div id="adminPanel" class="hidden admin-panel">
+            <details open>
+              <summary>App settings</summary>
+              <label>App name <input id="settingAppName"></label>
+              <label>Theme
+                <select id="settingTheme">
+                  <option value="dino_jungle">Dino jungle</option>
+                </select>
+              </label>
+              <label>Default daily tasks <input id="settingDailyCount" type="number" min="1" max="8"></label>
+              <label>Weekly target <input id="settingWeeklyTarget" type="number" min="1" max="56"></label>
+              <label>Reward text <input id="settingRewardText"></label>
+              <label>New parent PIN <input id="settingNewPin" type="password" inputmode="numeric" placeholder="Leave blank to keep current"></label>
+              <button id="saveSettingsBtn" class="primary-btn">Save settings</button>
+            </details>
+
+            <details>
+              <summary>People</summary>
+              <div id="peopleEditor"></div>
+              <button id="addPersonBtn" class="secondary-btn">Add person</button>
+            </details>
+
+            <details>
+              <summary>Tasks</summary>
+              <div id="taskEditor"></div>
+              <button id="addTaskBtn" class="secondary-btn">Add task</button>
+            </details>
+
+            <details>
+              <summary>Corrections</summary>
+              <p class="muted">Select a task on the Today screen, then use undo if George taps something by mistake.</p>
+              <button id="undoSelectedBtn" class="danger-btn">Undo selected task</button>
+              <button id="resetWeekBtn" class="danger-outline-btn">Reset this week</button>
+            </details>
+
+            <details>
+              <summary>Install app</summary>
+              <button id="installBtn" class="primary-btn" disabled>Install Dino Stars on this device</button>
+              <p class="muted">On iPhone/iPad: open in Safari, tap Share, then Add to Home Screen.</p>
+            </details>
+
+            <details>
+              <summary>Activity log</summary>
+              <button id="loadLogsBtn" class="secondary-btn">Load latest logs</button>
+              <div id="logList" class="log-list"></div>
+            </details>
+
+            <p class="version" id="versionLabel">v1.0.0</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button data-screen="today" class="nav-btn active">🦖<span>Today</span></button>
+      <button data-screen="week" class="nav-btn">⭐<span>Week</span></button>
+      <button data-screen="reward" class="nav-btn">🎁<span>Reward</span></button>
+      <button data-screen="family" class="nav-btn">👨‍👩‍👧‍👦<span>Family</span></button>
+      <button data-screen="parent" class="nav-btn">🔒<span>Parent</span></button>
+    </nav>
+  </div>
+
+  <div id="celebration" class="celebration hidden" role="status" aria-live="polite"></div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

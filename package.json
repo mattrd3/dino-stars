@@ -1,0 +1,16 @@
+{
+  "name": "dino-stars",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dino Stars - a family reward chart PWA built on Cloudflare Pages and D1.",
+  "scripts": {
+    "dev": "wrangler pages dev public --compatibility-date=2026-06-06 --d1=DB",
+    "deploy": "wrangler pages deploy public",
+    "d1:migrate:local": "wrangler d1 migrations apply dino-stars-db --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply dino-stars-db --remote",
+    "test:api": "node test/api-smoke-test.js"
+  },
+  "devDependencies": {
+    "wrangler": "latest"
+  }
+}

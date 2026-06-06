@@ -1,0 +1,12 @@
+# Dino Stars Cloudflare configuration template
+# IMPORTANT: Paste your real D1 database_id below after creating the database.
+# Do not copy this over an existing wrangler.toml without checking the database_id.
+
+name = "dino-stars"
+compatibility_date = "2026-06-06"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dino-stars-db"
+database_id = "2ce5c07e-f7ce-4607-a25f-c19af359bac5"
