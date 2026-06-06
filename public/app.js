@@ -1,7 +1,7 @@
-const APP_VERSION = "v1.0.0";
+const APP_VERSION = "v1.1.0";
 const THEMES = {
   dino_jungle: {
-    eggIcon: "🥚",
+    eggIcon: "egg",
     completeIcon: "⭐",
     heroIcon: "🦖",
     completeMessage: "Dino star collected!",
@@ -57,6 +57,10 @@ function bindControls() {
   $("resetWeekBtn").addEventListener("click", resetWeek);
   $("loadLogsBtn").addEventListener("click", loadLogs);
   $("installBtn").addEventListener("click", installApp);
+  const plannerPerson = $("plannerPerson");
+  if (plannerPerson) plannerPerson.addEventListener("change", renderWeeklyPlanner);
+  const plannerRefreshBtn = $("plannerRefreshBtn");
+  if (plannerRefreshBtn) plannerRefreshBtn.addEventListener("click", renderWeeklyPlanner);
 }
 
 async function loadState() {
@@ -122,11 +126,11 @@ function renderToday() {
     return;
   }
 
-  for (const task of tasks) {
+  tasks.forEach((task, index) => {
     const btn = document.createElement("button");
     btn.className = `task-card ${task.completed ? "completed" : ""}`;
     btn.innerHTML = `
-      <div class="task-egg">${task.completed ? theme().completeIcon : theme().eggIcon}</div>
+      ${task.completed ? starMarkup() : eggMarkup(index)}
       <div>
         <div class="task-title">${escapeHtml(task.icon)} ${escapeHtml(task.title)}</div>
         <div class="task-sub">${task.completed ? "Star collected" : "Tap the egg when done"}</div>
@@ -136,7 +140,7 @@ function renderToday() {
       if (!task.completed) completeTask(person, task);
     });
     list.appendChild(btn);
-  }
+  });
 }
 
 function renderWeek() {
@@ -150,7 +154,7 @@ function renderWeek() {
     const tasks = getTasks(person.id, date);
     const row = document.createElement("div");
     row.className = "day-row";
-    const stars = tasks.map(t => t.completed ? theme().completeIcon : theme().eggIcon).join(" ") || "—";
+    const stars = tasks.map((t, index) => t.completed ? `<span class="mini-star">⭐</span>` : `<span class="mini-egg egg-variant-${(index % 3) + 1}"></span>`).join("") || "—";
     row.innerHTML = `<div><strong>${dayName(date)}</strong><div class="muted">${shortDate(date)}</div></div><div class="day-stars">${stars}</div>`;
     grid.appendChild(row);
   }
@@ -193,6 +197,8 @@ function renderAdmin() {
   $("settingRewardText").value = state.settings.current_reward_text || "Reward chest surprise";
   renderPeopleEditor();
   renderTaskEditor();
+  renderPlannerPersonOptions();
+  renderWeeklyPlanner();
   if (adminPin) {
     $("pinPanel").classList.add("hidden");
     $("adminPanel").classList.remove("hidden");
@@ -231,6 +237,91 @@ function renderTaskEditor() {
   box.querySelectorAll("[data-save-task]").forEach(btn => btn.addEventListener("click", () => saveTask(btn.dataset.saveTask)));
 }
 
+function renderPlannerPersonOptions() {
+  const select = $("plannerPerson");
+  if (!select) return;
+  const current = select.value || selectedPersonId || "george";
+  select.innerHTML = "";
+  for (const person of state.people) {
+    const option = document.createElement("option");
+    option.value = person.id;
+    option.textContent = `${person.avatar_emoji} ${person.name}`;
+    select.appendChild(option);
+  }
+  select.value = state.people.find(p => p.id === current) ? current : (state.people[0]?.id || "george");
+}
+
+function renderWeeklyPlanner() {
+  const box = $("weeklyPlanner");
+  const select = $("plannerPerson");
+  if (!box || !select || !state) return;
+
+  const personId = select.value || selectedPersonId || "george";
+  const person = state.people.find(p => p.id === personId);
+  const taskCount = Number(person?.daily_task_count || state.settings.default_daily_task_count || 3);
+  box.innerHTML = "";
+
+  for (const date of state.weekDates) {
+    const tasksForDay = getTasks(personId, date);
+    const planned = tasksForDay.some(t => t.scheduled);
+    const card = document.createElement("div");
+    card.className = `planner-day ${planned ? "planned" : ""}`;
+    const slots = Array.from({ length: Math.max(1, taskCount) }, (_, index) => {
+      const selected = tasksForDay[index]?.taskTemplateId || "";
+      return `<label>Task ${index + 1}
+        <select data-planner-task="${date}" data-slot="${index}">
+          <option value="">No task</option>
+          ${state.taskTemplates.map(t => `<option value="${escapeAttr(t.id)}" ${t.id === selected ? "selected" : ""}>${escapeHtml(t.icon)} ${escapeHtml(t.title)}</option>`).join("")}
+        </select>
+      </label>`;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="planner-day-head">
+        <div>
+          <strong>${dayName(date)}</strong>
+          <div class="muted">${shortDate(date)}${planned ? " · planned" : " · fallback"}</div>
+        </div>
+        <div>${tasksForDay.map((t, i) => t.completed ? "⭐" : `<span class="mini-egg egg-variant-${(i % 3) + 1}"></span>`).join("")}</div>
+      </div>
+      <div class="planner-slots">${slots}</div>
+      <div class="planner-actions">
+        <button class="primary-btn" data-save-day="${date}" type="button">Save ${dayName(date)}</button>
+        <button class="secondary-btn" data-copy-day="${date}" type="button">Copy to all days</button>
+        <button class="secondary-btn" data-clear-day="${date}" type="button">Clear day</button>
+      </div>`;
+    box.appendChild(card);
+  }
+
+  box.querySelectorAll("[data-save-day]").forEach(btn => btn.addEventListener("click", () => savePlannedDay(personId, btn.dataset.saveDay)));
+  box.querySelectorAll("[data-clear-day]").forEach(btn => btn.addEventListener("click", () => savePlannedDay(personId, btn.dataset.clearDay, [])));
+  box.querySelectorAll("[data-copy-day]").forEach(btn => btn.addEventListener("click", () => copyPlannedDay(personId, btn.dataset.copyDay)));
+}
+
+function getPlannerTaskIds(date) {
+  return Array.from(document.querySelectorAll(`[data-planner-task="${date}"]`))
+    .map(select => select.value)
+    .filter(Boolean);
+}
+
+async function savePlannedDay(personId, date, explicitIds = null) {
+  try {
+    const ids = explicitIds || getPlannerTaskIds(date);
+    state = await post("/api/admin/schedule-day", { pin: adminPin, personId, taskDate: date, taskTemplateIds: ids });
+    render();
+    showCelebration("Day plan saved", "🦖✅");
+  } catch (err) { alert(err.message); }
+}
+
+async function copyPlannedDay(personId, fromDate) {
+  if (!confirm("Copy this day’s tasks to every day this week for this person?")) return;
+  try {
+    state = await post("/api/admin/copy-day", { pin: adminPin, personId, fromDate, toDates: state.weekDates });
+    render();
+    showCelebration("Week planned", "🦖📅");
+  } catch (err) { alert(err.message); }
+}
+
 async function completeTask(person, task) {
   if (!navigator.onLine) {
     setOffline(true);
@@ -263,6 +354,7 @@ async function unlockAdmin() {
       sessionStorage.setItem("dinoStarsAdminPin", pin);
       $("pinPanel").classList.add("hidden");
       $("adminPanel").classList.remove("hidden");
+      renderAdmin();
       showCelebration("Parent area unlocked", "🔒🦖");
     } else alert("Incorrect PIN");
   } catch (err) { alert(err.message); }
@@ -392,6 +484,14 @@ async function post(url, payload) {
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || "Request failed");
   return data;
+}
+
+function eggMarkup(index = 0) {
+  return `<div class="task-egg dino-egg egg-variant-${(index % 3) + 1}" aria-hidden="true"><span></span><i></i><b></b></div>`;
+}
+
+function starMarkup() {
+  return `<div class="task-egg star-egg" aria-hidden="true">⭐</div>`;
 }
 
 function getSelectedPerson() { return state.people.find(p => p.id === selectedPersonId) || state.people[0]; }

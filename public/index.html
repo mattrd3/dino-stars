@@ -111,8 +111,21 @@
 
             <details>
               <summary>Tasks</summary>
+              <p class="muted">This is the approved task library. Use Weekly Planner to choose the exact tasks for each day.</p>
               <div id="taskEditor"></div>
               <button id="addTaskBtn" class="secondary-btn">Add task</button>
+            </details>
+
+            <details open>
+              <summary>Weekly Planner</summary>
+              <p class="muted">Pick the exact jobs for each day. Planned days override the fallback task list.</p>
+              <div class="planner-controls">
+                <label>Person
+                  <select id="plannerPerson"></select>
+                </label>
+                <button id="plannerRefreshBtn" class="secondary-btn" type="button">Refresh planner</button>
+              </div>
+              <div id="weeklyPlanner" class="weekly-planner"></div>
             </details>
 
             <details>
@@ -134,7 +147,7 @@
               <div id="logList" class="log-list"></div>
             </details>
 
-            <p class="version" id="versionLabel">v1.0.0</p>
+            <p class="version" id="versionLabel">v1.1.0</p>
           </div>
         </div>
       </section>

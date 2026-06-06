@@ -11,6 +11,7 @@ async function main() {
   const health = await get("/api/health");
   assert(health.ok, "health ok");
   assert(health.app, "health includes app name");
+  assert(health.version === "v1.1.0", "health shows v1.1.0");
 
   const state = await get("/api/state");
   assert(state.ok, "state ok");
@@ -18,6 +19,8 @@ async function main() {
   assert(state.people.some(p => p.id === "george"), "George exists");
   assert(state.today, "today returned");
   assert(state.weekStartDate, "weekStartDate returned");
+  assert(state.taskTemplates.some(t => t.id === "eat_all_dinner"), "new task library loaded");
+  assert(state.taskTemplates.some(t => t.id === "brush_teeth" && t.icon === "🪥"), "single brush teeth task loaded");
   assert(state.tasksByPersonByDate.george[state.today].length >= 3, "George has tasks today");
 
   console.log("✅ Dino Stars smoke test passed");

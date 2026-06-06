@@ -1,4 +1,4 @@
-const VERSION = "v1.0.0";
+const VERSION = "v1.1.0";
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export async function onRequest(context) {
@@ -19,6 +19,8 @@ export async function onRequest(context) {
     if (request.method === "POST" && path === "admin/person") return savePerson(request, env);
     if (request.method === "POST" && path === "admin/task") return saveTask(request, env);
     if (request.method === "POST" && path === "admin/assignment") return saveAssignment(request, env);
+    if (request.method === "POST" && path === "admin/schedule-day") return saveScheduleDay(request, env);
+    if (request.method === "POST" && path === "admin/copy-day") return copyScheduleDay(request, env);
     if (request.method === "POST" && path === "admin/reset-week") return resetWeek(request, env);
     if (request.method === "GET" && path === "admin/activity-log") return activityLog(request, env);
 
@@ -52,7 +54,7 @@ async function buildState(env) {
     `SELECT * FROM people WHERE active = 1 ORDER BY sort_order, name`
   ).all();
 
-  const taskRows = await env.DB.prepare(
+  const assignmentRows = await env.DB.prepare(
     `SELECT pt.id AS assignment_id, pt.person_id, pt.task_template_id, pt.days_of_week,
             pt.sort_order, tt.title, tt.icon, tt.description
        FROM person_tasks pt
@@ -60,6 +62,16 @@ async function buildState(env) {
       WHERE pt.active = 1 AND tt.active = 1
       ORDER BY pt.person_id, pt.sort_order, tt.title`
   ).all();
+
+  const scheduledRows = await env.DB.prepare(
+    `SELECT st.id AS scheduled_id, st.person_id, st.task_date, st.task_template_id,
+            st.sort_order, tt.title, tt.icon, tt.description
+       FROM scheduled_tasks st
+       JOIN task_templates tt ON tt.id = st.task_template_id
+      WHERE st.active = 1 AND tt.active = 1
+        AND st.task_date BETWEEN ? AND ?
+      ORDER BY st.person_id, st.task_date, st.sort_order, tt.title`
+  ).bind(weekStartDate, weekEndDate).all();
 
   const completions = await env.DB.prepare(
     `SELECT * FROM task_completions
@@ -71,25 +83,38 @@ async function buildState(env) {
   ).bind(weekStartDate).all();
 
   const completionsByKey = new Set((completions.results || []).map(c => `${c.person_id}|${c.task_template_id}|${c.task_date}`));
+  const scheduledByPersonDate = {};
+  for (const st of scheduledRows.results || []) {
+    const key = `${st.person_id}|${st.task_date}`;
+    if (!scheduledByPersonDate[key]) scheduledByPersonDate[key] = [];
+    scheduledByPersonDate[key].push(st);
+  }
 
   const tasksByPersonByDate = {};
   for (const p of people.results || []) {
     tasksByPersonByDate[p.id] = {};
     for (const date of weekDates) {
-      const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
+      const scheduled = scheduledByPersonDate[`${p.id}|${date}`] || [];
       const personTaskLimit = Number(p.daily_task_count || settings.default_daily_task_count || 3);
-      const tasks = (taskRows.results || [])
-        .filter(t => t.person_id === p.id && String(t.days_of_week || "").split(",").includes(dayKey))
-        .slice(0, personTaskLimit)
-        .map(t => ({
-          assignmentId: t.assignment_id,
-          taskTemplateId: t.task_template_id,
-          title: t.title,
-          icon: t.icon,
-          description: t.description,
-          completed: completionsByKey.has(`${p.id}|${t.task_template_id}|${date}`)
-        }));
-      tasksByPersonByDate[p.id][date] = tasks;
+      const sourceRows = scheduled.length
+        ? scheduled
+        : (assignmentRows.results || [])
+            .filter(t => {
+              const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
+              return t.person_id === p.id && String(t.days_of_week || "").split(",").includes(dayKey);
+            })
+            .slice(0, personTaskLimit);
+
+      tasksByPersonByDate[p.id][date] = sourceRows.map(t => ({
+        assignmentId: t.assignment_id || null,
+        scheduledId: t.scheduled_id || null,
+        taskTemplateId: t.task_template_id,
+        title: t.title,
+        icon: t.icon,
+        description: t.description,
+        scheduled: Boolean(t.scheduled_id),
+        completed: completionsByKey.has(`${p.id}|${t.task_template_id}|${date}`)
+      }));
     }
   }
 
@@ -104,7 +129,8 @@ async function buildState(env) {
     weekDates,
     people: people.results || [],
     taskTemplates: await allTaskTemplates(env),
-    assignments: taskRows.results || [],
+    assignments: assignmentRows.results || [],
+    scheduledTasks: scheduledRows.results || [],
     tasksByPersonByDate,
     rewards: rewards.results || [],
     rewardProgress,
@@ -147,10 +173,15 @@ async function completeTask(request, env) {
   if (!personId || !taskTemplateId) return json({ ok: false, error: "personId and taskTemplateId are required." }, 400);
   if (!isDate(taskDate)) return json({ ok: false, error: "taskDate must be YYYY-MM-DD." }, 400);
 
-  const assigned = await env.DB.prepare(
+  const isPlanned = await env.DB.prepare(
+    `SELECT 1 FROM scheduled_tasks WHERE person_id = ? AND task_template_id = ? AND task_date = ? AND active = 1`
+  ).bind(personId, taskTemplateId, taskDate).first();
+
+  const isAssigned = await env.DB.prepare(
     `SELECT 1 FROM person_tasks WHERE person_id = ? AND task_template_id = ? AND active = 1`
   ).bind(personId, taskTemplateId).first();
-  if (!assigned) return json({ ok: false, error: "That task is not assigned to this person." }, 400);
+
+  if (!isPlanned && !isAssigned) return json({ ok: false, error: "That task is not assigned or planned for this person." }, 400);
 
   const id = crypto.randomUUID();
   await env.DB.prepare(
@@ -226,6 +257,9 @@ async function saveSettings(request, env) {
       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`).bind(hash).run();
   }
 
+  await env.DB.prepare(`INSERT INTO settings (key, value, updated_at) VALUES ('version', ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`).bind(VERSION).run();
+
   await log(env, { action_type: "settings_updated", actor_name: "Parent", source: "admin", details: "Settings updated." });
   return json({ ok: true, ...(await buildState(env)) });
 }
@@ -284,6 +318,90 @@ async function saveAssignment(request, env) {
   return json({ ok: true, ...(await buildState(env)) });
 }
 
+async function saveScheduleDay(request, env) {
+  const body = await readJson(request);
+  if (!(await verifyPin(env, body.pin))) return json({ ok: false, error: "Incorrect parent PIN." }, 401);
+
+  const personId = cleanId(body.personId);
+  const taskDate = body.taskDate;
+  const taskIds = Array.isArray(body.taskTemplateIds) ? body.taskTemplateIds.map(cleanId).filter(Boolean) : [];
+  if (!personId || !isDate(taskDate)) return json({ ok: false, error: "personId and taskDate are required." }, 400);
+
+  await saveScheduleForDay(env, personId, taskDate, taskIds);
+
+  await log(env, {
+    action_type: "schedule_day_saved",
+    actor_name: "Parent",
+    person_id: personId,
+    task_date: taskDate,
+    source: "admin",
+    new_value: taskIds.join(","),
+    details: "Daily task plan saved."
+  });
+
+  return json({ ok: true, ...(await buildState(env)) });
+}
+
+async function copyScheduleDay(request, env) {
+  const body = await readJson(request);
+  if (!(await verifyPin(env, body.pin))) return json({ ok: false, error: "Incorrect parent PIN." }, 401);
+
+  const personId = cleanId(body.personId);
+  const fromDate = body.fromDate;
+  const toDates = Array.isArray(body.toDates) ? body.toDates.filter(isDate) : [];
+  if (!personId || !isDate(fromDate) || !toDates.length) return json({ ok: false, error: "personId, fromDate and toDates are required." }, 400);
+
+  const fromRows = await env.DB.prepare(
+    `SELECT task_template_id FROM scheduled_tasks WHERE person_id = ? AND task_date = ? AND active = 1 ORDER BY sort_order`
+  ).bind(personId, fromDate).all();
+  const taskIds = (fromRows.results || []).map(r => r.task_template_id);
+
+  for (const date of toDates) {
+    await saveScheduleForDay(env, personId, date, taskIds);
+  }
+
+  await log(env, {
+    action_type: "schedule_day_copied",
+    actor_name: "Parent",
+    person_id: personId,
+    task_date: fromDate,
+    source: "admin",
+    new_value: toDates.join(","),
+    details: "Daily task plan copied."
+  });
+
+  return json({ ok: true, ...(await buildState(env)) });
+}
+
+async function saveScheduleForDay(env, personId, taskDate, taskIds) {
+  await env.DB.prepare(`UPDATE scheduled_tasks SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE person_id = ? AND task_date = ?`)
+    .bind(personId, taskDate).run();
+
+  const seen = new Set();
+  let order = 1;
+  for (const taskId of taskIds) {
+    if (seen.has(taskId)) continue;
+    seen.add(taskId);
+    const exists = await env.DB.prepare(`SELECT 1 FROM task_templates WHERE id = ? AND active = 1`).bind(taskId).first();
+    if (!exists) continue;
+
+    const id = `${personId}_${taskDate}_${taskId}`;
+    await env.DB.prepare(
+      `INSERT INTO scheduled_tasks (id, person_id, task_date, task_template_id, sort_order, active, updated_at)
+       VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+       ON CONFLICT(person_id, task_date, task_template_id)
+       DO UPDATE SET sort_order = excluded.sort_order, active = 1, updated_at = CURRENT_TIMESTAMP`
+    ).bind(id, personId, taskDate, taskId, order++).run();
+
+    await env.DB.prepare(
+      `INSERT INTO person_tasks (id, person_id, task_template_id, days_of_week, sort_order, active, updated_at)
+       VALUES (?, ?, ?, 'mon,tue,wed,thu,fri,sat,sun', ?, 1, CURRENT_TIMESTAMP)
+       ON CONFLICT(person_id, task_template_id)
+       DO UPDATE SET active = 1, updated_at = CURRENT_TIMESTAMP`
+    ).bind(`${personId}_${taskId}`, personId, taskId, order).run();
+  }
+}
+
 async function resetWeek(request, env) {
   const body = await readJson(request);
   if (!(await verifyPin(env, body.pin))) return json({ ok: false, error: "Incorrect parent PIN." }, 401);
@@ -304,16 +422,16 @@ async function activityLog(request, env) {
 }
 
 async function ensureWeeklyRewards(env, weekStartDate, settings) {
-  const people = await env.DB.prepare(`SELECT id FROM people WHERE active = 1 AND role = 'child'`).all();
+  const people = await env.DB.prepare(`SELECT id, counts_towards_reward FROM people WHERE active = 1 AND role = 'child'`).all();
   for (const p of people.results || []) {
     await env.DB.prepare(`INSERT OR IGNORE INTO weekly_rewards (id, person_id, week_start_date, reward_text, target_stars)
       VALUES (?, ?, ?, ?, ?)`)
-      .bind(`${p.id}_${weekStartDate}`, p.id, weekStartDate, settings.current_reward_text || "Reward chest surprise", Number(settings.default_weekly_target || 15)).run();
+      .bind(`${p.id}_${weekStartDate}`, p.id, weekStartDate, settings.current_reward_text || "Reward chest surprise", p.counts_towards_reward ? Number(settings.default_weekly_target || 15) : 0).run();
   }
 }
 
 async function allTaskTemplates(env) {
-  const rows = await env.DB.prepare(`SELECT * FROM task_templates ORDER BY active DESC, title`).all();
+  const rows = await env.DB.prepare(`SELECT * FROM task_templates WHERE active = 1 ORDER BY title`).all();
   return rows.results || [];
 }
 
